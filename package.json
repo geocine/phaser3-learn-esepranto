@@ -1,7 +1,7 @@
 {
-  "name": "phaser3-rollup-typescript",
+  "name": "phaser3-learn-esperanto",
   "version": "1.0.2",
-  "description": "Phaser 3 TypeScript Starter",
+  "description": "Phaser 3 Learn Esperanto",
   "main": "src/game.ts",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nollup -c --hot --content-base public",
@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/geocine/phaser3-rollup-typescript.git"
+    "url": "git+https://github.com/geocine/phaser3-learn-esperanto.git"
   },
   "author": "Aivan Monceller",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/geocine/phaser3-rollup-typescript/issues"
+    "url": "https://github.com/geocine/phaser3-learn-esperanto/issues"
   },
-  "homepage": "https://github.com/geocine/phaser3-rollup-typescript#readme",
+  "homepage": "https://github.com/geocine/phaser3-learn-esperanto#readme",
   "devDependencies": {
     "@rollup/plugin-alias": "^3.0.1",
     "@rollup/plugin-node-resolve": "^7.1.1",
