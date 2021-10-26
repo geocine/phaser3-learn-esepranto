@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/geocine/phaser3-rollup-typescript#readme"><img src="https://raw.githubusercontent.com/geocine/phaser3-learn-esepranto/master/public/assets/phaser3-logo.png" alt="header" width="600"/></a>
+  <a href="https://github.com/geocine/phaser3-rollup-typescript#readme"><img src="https://raw.githubusercontent.com/geocine/phaser3-learn-esepranto/master/public/assets/phaser3-logo.png" alt="header"/></a>
   <br>
   Phaser 3 Learn Esperanto
   <br>
