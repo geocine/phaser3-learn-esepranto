@@ -1,4 +1,4 @@
-import 'phaser';
+import Phaser from 'phaser';
 
 type LearnObject = Phaser.GameObjects.BitmapText & {
   correctTween?: Phaser.Tweens.Tween;
