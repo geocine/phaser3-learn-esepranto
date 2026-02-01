@@ -1,27 +1,26 @@
-<h1 align="center">
-  <br>
-  <a href="https://github.com/geocine/phaser3-rollup-typescript#readme"><img src="https://raw.githubusercontent.com/geocine/phaser3-learn-esepranto/master/public/assets/phaser3-logo.png" alt="header"/></a>
-  <br>
-  Phaser 3 Learn Esperanto
-  <br>
-</h1>
+﻿# Phaser 3 Learn Esperanto
 
-This is a game built with [Phaser 3](https://github.com/photonstorm/phaser), with [TypeScript](https://www.typescriptlang.org/), [Rollup](https://rollupjs.org) with ⚡️ lightning fast HMR through [Vite](https://vitejs.dev/).
+Learn basic Esperanto nouns by matching the spoken word and on-screen word to the correct object.
+
+## Gameplay
+
+- Listen to the audio prompt and read the Esperanto word at the top.
+- Click the matching object in the scene to answer.
+- Correct and wrong answers play feedback sounds before the next prompt.
 
 ## Available Commands
 
 | Command | Description |
 |---------|-------------|
 | `yarn install` | Install project dependencies |
-| `yarn dev` | Builds project and open web server, watching for changes |
-| `yarn build` | Builds code bundle with production settings  |
-| `yarn serve` | Run a web server to serve built code bundle |
+| `yarn dev` | Start the dev server with hot reload |
+| `yarn build` | Build the production bundle |
+| `yarn serve` | Preview the production build |
 
 ## Development
 
-After cloning the repo, run `yarn install` from your project directory. Then, you can start the local development
-server by running `yarn dev` and navigate to http://localhost:3000.
+After cloning the repo, run `yarn install` and then `yarn dev`. The game will be available at http://localhost:5173.
 
 ## Production
 
-After running `yarn build`, the files you need for production will be on the `dist` folder. To test code on your `dist` folder, run `yarn serve` and navigate to http://localhost:5000
+Run `yarn build` to create the `dist` folder. Use `yarn serve` to preview it at http://localhost:4173.
