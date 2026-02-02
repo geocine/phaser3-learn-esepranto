@@ -19,6 +19,9 @@ export default class Demo extends Phaser.Scene {
   correctSound: Phaser.Sound.BaseSound;
   wrongSound: Phaser.Sound.BaseSound;
 
+  private lastWordKey?: string;
+  private awaitingNextQuestion = false;
+
   constructor() {
     super('GameScene');
   }
@@ -101,7 +104,6 @@ export default class Demo extends Phaser.Scene {
       item.setInteractive();
 
       // creating tween - resize tween
-      // creating tween - resize tween
       item.correctTween = this.tweens.add({
         targets: item,
         scaleX: 1.5,
@@ -136,7 +138,13 @@ export default class Demo extends Phaser.Scene {
 
       // listen to the pointerdown event
       item.on('pointerdown', () => {
-        let result = this.processAnswer(this.words[i].translation);
+        if (this.awaitingNextQuestion) {
+          return;
+        }
+
+        this.awaitingNextQuestion = true;
+
+        const result = this.processAnswer(this.words[i].translation);
 
         // depending on the result, we'll play one tween or the other
         if (result) {
@@ -145,8 +153,11 @@ export default class Demo extends Phaser.Scene {
           item.wrongTween.play();
         }
 
-        // show next question
-        setTimeout(() => this.showNextQuestion(), 800);
+        // show next question (use Phaser clock so it respects pause/time scale)
+        this.time.delayedCall(800, () => {
+          this.awaitingNextQuestion = false;
+          this.showNextQuestion();
+        });
       });
 
       // listen to the pointerover event
@@ -176,9 +187,9 @@ export default class Demo extends Phaser.Scene {
     this.showNextQuestion();
   }
 
-  processAnswer(userResponse) {
+  processAnswer(userResponse?: string) {
     // compare user response with correct response
-    if (userResponse == this.nextWord.translation) {
+    if (userResponse === this.nextWord.translation) {
       // it's correct
 
       // play sound
@@ -196,8 +207,11 @@ export default class Demo extends Phaser.Scene {
   }
 
   showNextQuestion() {
-    // select a random word
-    this.nextWord = Phaser.Math.RND.pick(this.words);
+    // select a random word (avoid repeating the same prompt twice in a row)
+    const candidateWords = this.words.filter((w) => w.key !== this.lastWordKey);
+
+    this.nextWord = Phaser.Math.RND.pick(candidateWords.length ? candidateWords : this.words);
+    this.lastWordKey = this.nextWord.key as string;
 
     // play a sound for that word
     this.nextWord.sound.play();
