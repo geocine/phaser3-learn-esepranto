@@ -16,11 +16,14 @@ export default class Demo extends Phaser.Scene {
   words: LearnObjectConfig[];
   nextWord: LearnObjectConfig;
   wordText: Phaser.GameObjects.Text;
+  scoreText: Phaser.GameObjects.Text;
   correctSound: Phaser.Sound.BaseSound;
   wrongSound: Phaser.Sound.BaseSound;
 
   private lastWordKey?: string;
   private awaitingNextQuestion = false;
+  private score = 0;
+  private attempts = 0;
 
   constructor() {
     super('GameScene');
@@ -180,6 +183,15 @@ export default class Demo extends Phaser.Scene {
       fill: '#ffffff'
     });
 
+    this.scoreText = this.add
+      .text(this.scale.width - 30, 20, '', {
+        font: '18px Open Sans',
+        fill: '#ffffff'
+      })
+      .setOrigin(1, 0);
+
+    this.updateScoreText();
+
     // correct / wrong sounds
     this.correctSound = this.sound.add('correct');
     this.wrongSound = this.sound.add('wrong');
@@ -188,12 +200,18 @@ export default class Demo extends Phaser.Scene {
   }
 
   processAnswer(userResponse?: string) {
+    this.attempts += 1;
+
     // compare user response with correct response
     if (userResponse === this.nextWord.translation) {
       // it's correct
 
+      this.score += 1;
+
       // play sound
       this.correctSound.play();
+
+      this.updateScoreText();
 
       return true;
     } else {
@@ -202,8 +220,15 @@ export default class Demo extends Phaser.Scene {
       // play sound
       this.wrongSound.play();
 
+      this.updateScoreText();
+
       return false;
     }
+  }
+
+  updateScoreText() {
+    const percent = this.attempts ? Math.round((this.score / this.attempts) * 100) : 0;
+    this.scoreText.setText(`Score: ${this.score}/${this.attempts} (${percent}%)`);
   }
 
   showNextQuestion() {
