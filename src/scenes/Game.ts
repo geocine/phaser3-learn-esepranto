@@ -17,11 +17,13 @@ export default class Demo extends Phaser.Scene {
   nextWord: LearnObjectConfig;
   wordText: Phaser.GameObjects.Text;
   scoreText: Phaser.GameObjects.Text;
+  muteText: Phaser.GameObjects.Text;
   correctSound: Phaser.Sound.BaseSound;
   wrongSound: Phaser.Sound.BaseSound;
 
   private lastWordKey?: string;
   private awaitingNextQuestion = false;
+  private sfxMuted = false;
   private score = 0;
   private attempts = 0;
 
@@ -192,6 +194,21 @@ export default class Demo extends Phaser.Scene {
 
     this.updateScoreText();
 
+    this.muteText = this.add.text(30, 55, '', {
+      font: '16px Open Sans',
+      fill: '#ffffff'
+    });
+
+    this.updateMuteText();
+
+    // keyboard shortcut: press M to mute/unmute SFX (keeps lesson audio)
+    this.input.keyboard?.on('keydown-M', () => {
+      this.sfxMuted = !this.sfxMuted;
+      this.correctSound?.setMute(this.sfxMuted);
+      this.wrongSound?.setMute(this.sfxMuted);
+      this.updateMuteText();
+    });
+
     // correct / wrong sounds
     this.correctSound = this.sound.add('correct');
     this.wrongSound = this.sound.add('wrong');
@@ -229,6 +246,10 @@ export default class Demo extends Phaser.Scene {
   updateScoreText() {
     const percent = this.attempts ? Math.round((this.score / this.attempts) * 100) : 0;
     this.scoreText.setText(`Score: ${this.score}/${this.attempts} (${percent}%)`);
+  }
+
+  updateMuteText() {
+    this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M)`);
   }
 
   showNextQuestion() {
