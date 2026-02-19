@@ -27,6 +27,8 @@ export default class Demo extends Phaser.Scene {
   private score = 0;
   private attempts = 0;
 
+  private currentPromptSound?: Phaser.Sound.BaseSound;
+
   constructor() {
     super('GameScene');
   }
@@ -209,6 +211,16 @@ export default class Demo extends Phaser.Scene {
       this.updateMuteText();
     });
 
+    // keyboard shortcut: press R to replay the current word audio
+    this.input.keyboard?.on('keydown-R', () => {
+      if (this.awaitingNextQuestion) {
+        return;
+      }
+
+      this.currentPromptSound?.stop();
+      this.currentPromptSound?.play();
+    });
+
     // correct / wrong sounds
     this.correctSound = this.sound.add('correct');
     this.wrongSound = this.sound.add('wrong');
@@ -249,7 +261,7 @@ export default class Demo extends Phaser.Scene {
   }
 
   updateMuteText() {
-    this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M)`);
+    this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M) | Replay word (R)`);
   }
 
   showNextQuestion() {
@@ -259,8 +271,10 @@ export default class Demo extends Phaser.Scene {
     this.nextWord = Phaser.Math.RND.pick(candidateWords.length ? candidateWords : this.words);
     this.lastWordKey = this.nextWord.key as string;
 
-    // play a sound for that word
-    this.nextWord.sound.play();
+    // play a sound for that word (stop previous prompt so it doesn't overlap)
+    this.currentPromptSound?.stop();
+    this.currentPromptSound = this.nextWord.sound;
+    this.currentPromptSound?.play();
 
     this.wordText.setText(this.nextWord.translation);
   }
