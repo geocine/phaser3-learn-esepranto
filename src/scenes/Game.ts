@@ -20,6 +20,11 @@ export default class Demo extends Phaser.Scene {
   muteText: Phaser.GameObjects.Text;
   feedbackText: Phaser.GameObjects.Text;
   feedbackTween?: Phaser.Tweens.Tween;
+
+  // optional on-screen controls (useful on mobile)
+  muteButton?: Phaser.GameObjects.Text;
+  replayButton?: Phaser.GameObjects.Text;
+
   correctSound: Phaser.Sound.BaseSound;
   wrongSound: Phaser.Sound.BaseSound;
 
@@ -232,6 +237,37 @@ export default class Demo extends Phaser.Scene {
       })
       .setAlpha(0);
 
+    // on-screen controls (useful on mobile where keyboard shortcuts aren't available)
+    this.muteButton = this.add
+      .text(30, 80, '[Toggle SFX]', {
+        font: '16px Open Sans',
+        fill: '#ffffaa'
+      })
+      .setInteractive({ useHandCursor: true });
+
+    this.muteButton.on('pointerdown', () => {
+      this.sfxMuted = !this.sfxMuted;
+      this.correctSound?.setMute(this.sfxMuted);
+      this.wrongSound?.setMute(this.sfxMuted);
+      this.updateMuteText();
+    });
+
+    this.replayButton = this.add
+      .text(160, 80, '[Replay word]', {
+        font: '16px Open Sans',
+        fill: '#ffffaa'
+      })
+      .setInteractive({ useHandCursor: true });
+
+    this.replayButton.on('pointerdown', () => {
+      if (this.awaitingNextQuestion) {
+        return;
+      }
+
+      this.currentPromptSound?.stop();
+      this.currentPromptSound?.play();
+    });
+
     // keyboard shortcut: press M to mute/unmute SFX (keeps lesson audio)
     this.input.keyboard?.on('keydown-M', () => {
       this.sfxMuted = !this.sfxMuted;
@@ -326,7 +362,7 @@ export default class Demo extends Phaser.Scene {
 
   updateMuteText() {
     this.muteText.setText(
-      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M or tap) | Replay word (R or tap word) | Skip (N)`
+      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M or tap hint) | Replay (R or tap word) | Skip (N)`
     );
   }
 
