@@ -221,6 +221,17 @@ export default class Demo extends Phaser.Scene {
       this.currentPromptSound?.play();
     });
 
+    // keyboard shortcut: press N to skip to a new prompt (doesn't affect score/attempts)
+    this.input.keyboard?.on('keydown-N', () => {
+      if (this.awaitingNextQuestion) {
+        return;
+      }
+
+      this.awaitingNextQuestion = true;
+      this.showNextQuestion();
+      this.awaitingNextQuestion = false;
+    });
+
     // correct / wrong sounds
     this.correctSound = this.sound.add('correct');
     this.wrongSound = this.sound.add('wrong');
@@ -261,7 +272,9 @@ export default class Demo extends Phaser.Scene {
   }
 
   updateMuteText() {
-    this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M) | Replay word (R)`);
+    this.muteText.setText(
+      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M) | Replay word (R) | Skip (N)`
+    );
   }
 
   showNextQuestion() {
