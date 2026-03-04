@@ -18,6 +18,8 @@ export default class Demo extends Phaser.Scene {
   wordText: Phaser.GameObjects.Text;
   scoreText: Phaser.GameObjects.Text;
   muteText: Phaser.GameObjects.Text;
+  feedbackText: Phaser.GameObjects.Text;
+  feedbackTween?: Phaser.Tweens.Tween;
   correctSound: Phaser.Sound.BaseSound;
   wrongSound: Phaser.Sound.BaseSound;
 
@@ -203,6 +205,13 @@ export default class Demo extends Phaser.Scene {
 
     this.updateMuteText();
 
+    this.feedbackText = this.add
+      .text(30, 85, '', {
+        font: '16px Open Sans',
+        fill: '#ffffff'
+      })
+      .setAlpha(0);
+
     // keyboard shortcut: press M to mute/unmute SFX (keeps lesson audio)
     this.input.keyboard?.on('keydown-M', () => {
       this.sfxMuted = !this.sfxMuted;
@@ -225,6 +234,10 @@ export default class Demo extends Phaser.Scene {
     this.correctSound = this.sound.add('correct');
     this.wrongSound = this.sound.add('wrong');
 
+    // if the user toggled mute before these sounds existed, apply it now
+    this.correctSound.setMute(this.sfxMuted);
+    this.wrongSound.setMute(this.sfxMuted);
+
     this.showNextQuestion();
   }
 
@@ -241,6 +254,7 @@ export default class Demo extends Phaser.Scene {
       this.correctSound.play();
 
       this.updateScoreText();
+      this.showFeedback(true);
 
       return true;
     } else {
@@ -250,9 +264,28 @@ export default class Demo extends Phaser.Scene {
       this.wrongSound.play();
 
       this.updateScoreText();
+      this.showFeedback(false);
 
       return false;
     }
+  }
+
+  showFeedback(correct: boolean) {
+    const text = correct ? 'Correct!' : 'Try again';
+    const color = correct ? '#65f26a' : '#ff6b6b';
+
+    this.feedbackText.setText(text);
+    this.feedbackText.setColor(color);
+    this.feedbackText.setAlpha(1);
+
+    this.feedbackTween?.stop();
+    this.feedbackTween = this.tweens.add({
+      targets: this.feedbackText,
+      alpha: 0,
+      duration: 500,
+      delay: 350,
+      ease: 'Quad.easeOut'
+    });
   }
 
   updateScoreText() {
