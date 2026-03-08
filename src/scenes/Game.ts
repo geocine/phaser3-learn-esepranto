@@ -189,6 +189,17 @@ export default class Demo extends Phaser.Scene {
       fill: '#ffffff'
     });
 
+    // allow tapping/clicking the current word to replay its audio
+    this.wordText.setInteractive({ useHandCursor: true });
+    this.wordText.on('pointerdown', () => {
+      if (this.awaitingNextQuestion) {
+        return;
+      }
+
+      this.currentPromptSound?.stop();
+      this.currentPromptSound?.play();
+    });
+
     this.scoreText = this.add
       .text(this.scale.width - 30, 20, '', {
         font: '18px Open Sans',
@@ -201,6 +212,15 @@ export default class Demo extends Phaser.Scene {
     this.muteText = this.add.text(30, 55, '', {
       font: '16px Open Sans',
       fill: '#ffffff'
+    });
+
+    // allow tapping/clicking the hint text to toggle SFX mute
+    this.muteText.setInteractive({ useHandCursor: true });
+    this.muteText.on('pointerdown', () => {
+      this.sfxMuted = !this.sfxMuted;
+      this.correctSound?.setMute(this.sfxMuted);
+      this.wrongSound?.setMute(this.sfxMuted);
+      this.updateMuteText();
     });
 
     this.updateMuteText();
@@ -306,7 +326,7 @@ export default class Demo extends Phaser.Scene {
 
   updateMuteText() {
     this.muteText.setText(
-      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M) | Replay word (R) | Skip (N)`
+      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M or tap) | Replay word (R or tap word) | Skip (N)`
     );
   }
 
