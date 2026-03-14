@@ -237,36 +237,39 @@ export default class Demo extends Phaser.Scene {
       })
       .setAlpha(0);
 
-    // on-screen controls (useful on mobile where keyboard shortcuts aren't available)
-    this.muteButton = this.add
-      .text(30, 80, '[Toggle SFX]', {
-        font: '16px Open Sans',
-        fill: '#ffffaa'
-      })
-      .setInteractive({ useHandCursor: true });
+    // On-screen controls (show on touch devices only to avoid crowding desktop HUD).
+    const isTouchDevice = this.sys.game.device.input.touch;
+    if (isTouchDevice) {
+      this.muteButton = this.add
+        .text(30, 80, '[SFX]', {
+          font: '16px Open Sans',
+          fill: '#ffffaa'
+        })
+        .setInteractive({ useHandCursor: true });
 
-    this.muteButton.on('pointerdown', () => {
-      this.sfxMuted = !this.sfxMuted;
-      this.correctSound?.setMute(this.sfxMuted);
-      this.wrongSound?.setMute(this.sfxMuted);
-      this.updateMuteText();
-    });
+      this.muteButton.on('pointerdown', () => {
+        this.sfxMuted = !this.sfxMuted;
+        this.correctSound?.setMute(this.sfxMuted);
+        this.wrongSound?.setMute(this.sfxMuted);
+        this.updateMuteText();
+      });
 
-    this.replayButton = this.add
-      .text(160, 80, '[Replay word]', {
-        font: '16px Open Sans',
-        fill: '#ffffaa'
-      })
-      .setInteractive({ useHandCursor: true });
+      this.replayButton = this.add
+        .text(90, 80, '[Replay]', {
+          font: '16px Open Sans',
+          fill: '#ffffaa'
+        })
+        .setInteractive({ useHandCursor: true });
 
-    this.replayButton.on('pointerdown', () => {
-      if (this.awaitingNextQuestion) {
-        return;
-      }
+      this.replayButton.on('pointerdown', () => {
+        if (this.awaitingNextQuestion) {
+          return;
+        }
 
-      this.currentPromptSound?.stop();
-      this.currentPromptSound?.play();
-    });
+        this.currentPromptSound?.stop();
+        this.currentPromptSound?.play();
+      });
+    }
 
     // keyboard shortcut: press M to mute/unmute SFX (keeps lesson audio)
     this.input.keyboard?.on('keydown-M', () => {
@@ -361,9 +364,8 @@ export default class Demo extends Phaser.Scene {
   }
 
   updateMuteText() {
-    this.muteText.setText(
-      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (M or tap hint) | Replay (R or tap word) | Skip (N)`
-    );
+    this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (tap hint / M)`);
+
   }
 
   showNextQuestion() {
