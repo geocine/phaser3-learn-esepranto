@@ -30,6 +30,7 @@ export default class Demo extends Phaser.Scene {
 
   private lastWordKey?: string;
   private awaitingNextQuestion = false;
+  private inputLocked = false;
   private sfxMuted = false;
   private score = 0;
   private attempts = 0;
@@ -152,25 +153,32 @@ export default class Demo extends Phaser.Scene {
 
       // listen to the pointerdown event
       item.on('pointerdown', () => {
-        if (this.awaitingNextQuestion) {
+        if (this.awaitingNextQuestion || this.inputLocked) {
           return;
         }
-
-        this.awaitingNextQuestion = true;
 
         const result = this.processAnswer(this.words[i].translation);
 
         // depending on the result, we'll play one tween or the other
         if (result) {
-          item.correctTween.play();
-        } else {
-          item.wrongTween.play();
+          this.awaitingNextQuestion = true;
+          item.correctTween.restart();
+
+          // show next question (use Phaser clock so it respects pause/time scale)
+          this.time.delayedCall(800, () => {
+            this.awaitingNextQuestion = false;
+            this.showNextQuestion();
+          });
+
+          return;
         }
 
-        // show next question (use Phaser clock so it respects pause/time scale)
-        this.time.delayedCall(800, () => {
-          this.awaitingNextQuestion = false;
-          this.showNextQuestion();
+        this.inputLocked = true;
+        item.wrongTween.restart();
+
+        this.time.delayedCall(500, () => {
+          this.inputLocked = false;
+          this.replayCurrentPrompt();
         });
       });
 
@@ -202,7 +210,7 @@ export default class Demo extends Phaser.Scene {
       }
 
       this.currentPromptSound?.stop();
-      this.currentPromptSound?.play();
+      this.replayCurrentPrompt();
     });
 
     this.scoreText = this.add
@@ -267,7 +275,7 @@ export default class Demo extends Phaser.Scene {
         }
 
         this.currentPromptSound?.stop();
-        this.currentPromptSound?.play();
+        this.replayCurrentPrompt();
       });
     }
 
@@ -286,7 +294,7 @@ export default class Demo extends Phaser.Scene {
       }
 
       this.currentPromptSound?.stop();
-      this.currentPromptSound?.play();
+      this.replayCurrentPrompt();
     });
 
     // keyboard shortcut: press N to skip to a new prompt (doesn't affect score/attempts)
@@ -365,7 +373,11 @@ export default class Demo extends Phaser.Scene {
 
   updateMuteText() {
     this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (tap hint / M)`);
+  }
 
+  replayCurrentPrompt() {
+    this.currentPromptSound?.stop();
+    this.currentPromptSound?.play();
   }
 
   showNextQuestion() {
@@ -376,9 +388,8 @@ export default class Demo extends Phaser.Scene {
     this.lastWordKey = this.nextWord.key as string;
 
     // play a sound for that word (stop previous prompt so it doesn't overlap)
-    this.currentPromptSound?.stop();
     this.currentPromptSound = this.nextWord.sound;
-    this.currentPromptSound?.play();
+    this.replayCurrentPrompt();
 
     this.wordText.setText(this.nextWord.translation);
   }
