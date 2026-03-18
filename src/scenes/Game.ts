@@ -147,23 +147,24 @@ export default class Demo extends Phaser.Scene {
         }
       });
 
-      // Wrong answer feedback: a quick shake + scale pulse.
-      // (Avoid large rotation here; depending on device/browser it can look like the sprite vanishes.)
-
+      // Wrong answer feedback: match the "correct" pop style, just smaller + with a brief red tint.
+      // This keeps the motion consistent and kid-friendly.
       item.wrongTween = this.tweens.add({
         targets: item,
-        // Gentle kid-friendly feedback: tiny wobble, mostly “nope” without aggression.
-        scaleX: baseScaleX * 1.03,
-        scaleY: baseScaleY * 1.03,
-        x: { from: baseX - 2, to: baseX + 2 },
-        duration: 60,
+        // Force baseline start so it never dips smaller first.
+        scaleX: { from: baseScaleX, to: baseScaleX * 1.18 },
+        scaleY: { from: baseScaleY, to: baseScaleY * 1.18 },
+        duration: 220,
         paused: true,
         yoyo: true,
-        repeat: 2,
-        // Keep the tween around after completion so repeated clicks can restart it.
         persist: true,
-        ease: 'Sine.easeInOut',
+        ease: 'Quad.easeInOut',
+        onStart: () => {
+          // Tint is supported by Images/Sprites; safe-guard for other object types.
+          (item as any).setTint?.(0xff6b6b);
+        },
         onComplete: () => {
+          (item as any).clearTint?.();
           item.setAngle(baseAngle);
           item.setAlpha(baseAlpha);
           item.setScale(baseScaleX, baseScaleY);
