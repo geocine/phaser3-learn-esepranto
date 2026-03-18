@@ -118,22 +118,33 @@ export default class Demo extends Phaser.Scene {
       // make item interactive
       item.setInteractive();
 
-      // creating tween - resize tween
+      // Cache baseline transform so we can always snap back after feedback tweens.
+      const baseX = item.x;
+      const baseY = item.y;
+      const baseScaleX = item.scaleX;
+      const baseScaleY = item.scaleY;
+      const baseAngle = item.angle;
+      const baseAlpha = item.alpha;
+
+      // Correct answer feedback: subtle pop (no large scale that can feel like it “jumps away”).
       item.correctTween = this.tweens.add({
         targets: item,
-        scaleX: 1.5,
-        scaleY: 1.5,
-        duration: 300,
+        scaleX: baseScaleX * 1.18,
+        scaleY: baseScaleY * 1.18,
+        duration: 120,
         paused: true,
         yoyo: true,
-        ease: 'Quad.easeInOut'
+        ease: 'Sine.easeOut',
+        onComplete: () => {
+          item.setAngle(baseAngle);
+          item.setAlpha(baseAlpha);
+          item.setScale(baseScaleX, baseScaleY);
+          item.setPosition(baseX, baseY);
+        }
       });
 
       // Wrong answer feedback: a quick shake + scale pulse.
       // (Avoid large rotation here; depending on device/browser it can look like the sprite vanishes.)
-      const baseX = item.x;
-      const baseScaleX = item.scaleX;
-      const baseScaleY = item.scaleY;
 
       item.wrongTween = this.tweens.add({
         targets: item,
@@ -176,6 +187,14 @@ export default class Demo extends Phaser.Scene {
         // depending on the result, we'll play one tween or the other
         if (result) {
           this.awaitingNextQuestion = true;
+
+          // Ensure correct feedback is always visible and doesn't leave the item in a weird state.
+          item.alphaTween.stop();
+          item.setAngle(baseAngle);
+          item.setAlpha(baseAlpha);
+          item.setScale(baseScaleX, baseScaleY);
+          item.setPosition(baseX, baseY);
+          item.correctTween.stop();
           item.correctTween.restart();
 
           // show next question (use Phaser clock so it respects pause/time scale)
@@ -190,10 +209,12 @@ export default class Demo extends Phaser.Scene {
         this.inputLocked = true;
 
         // If the player clicks wrong repeatedly, make sure the feedback always replays.
+        item.alphaTween.stop();
         item.wrongTween.stop();
-        item.setAngle(0);
+        item.setAngle(baseAngle);
+        item.setAlpha(baseAlpha);
         item.setScale(baseScaleX, baseScaleY);
-        item.setX(baseX);
+        item.setPosition(baseX, baseY);
         item.wrongTween.restart();
 
         this.time.delayedCall(500, () => {
