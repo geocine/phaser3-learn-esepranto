@@ -152,20 +152,18 @@ export default class Demo extends Phaser.Scene {
 
       item.wrongTween = this.tweens.add({
         targets: item,
-        // Shake in place: very small horizontal jitter (no drifting far away).
-        // Keep scale subtle; the main cue should be the shake.
-        scaleX: baseScaleX * 1.06,
-        scaleY: baseScaleY * 1.06,
-        x: { from: baseX - 4, to: baseX + 4 },
-        duration: 45,
+        // Gentle kid-friendly feedback: tiny wobble, mostly “nope” without aggression.
+        scaleX: baseScaleX * 1.03,
+        scaleY: baseScaleY * 1.03,
+        x: { from: baseX - 2, to: baseX + 2 },
+        duration: 60,
         paused: true,
         yoyo: true,
-        repeat: 3,
+        repeat: 2,
         // Keep the tween around after completion so repeated clicks can restart it.
         persist: true,
         ease: 'Sine.easeInOut',
         onComplete: () => {
-          // Ensure we always snap back to a clean state.
           item.setAngle(baseAngle);
           item.setAlpha(baseAlpha);
           item.setScale(baseScaleX, baseScaleY);
