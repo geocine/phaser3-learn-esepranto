@@ -129,15 +129,28 @@ export default class Demo extends Phaser.Scene {
         ease: 'Quad.easeInOut'
       });
 
+      // Wrong answer feedback: a quick shake + scale pulse.
+      // (Avoid large rotation here; depending on device/browser it can look like the sprite vanishes.)
+      const baseX = item.x;
+      const baseScaleX = item.scaleX;
+      const baseScaleY = item.scaleY;
+
       item.wrongTween = this.tweens.add({
         targets: item,
-        scaleX: 1.5,
-        scaleY: 1.5,
-        duration: 300,
-        angle: 90,
+        scaleX: baseScaleX * 1.5,
+        scaleY: baseScaleY * 1.5,
+        x: baseX + 10,
+        duration: 70,
         paused: true,
         yoyo: true,
-        ease: 'Quad.easeInOut'
+        repeat: 2,
+        ease: 'Quad.easeInOut',
+        onComplete: () => {
+          // Ensure we always snap back to a clean state.
+          item.setAngle(0);
+          item.setScale(baseScaleX, baseScaleY);
+          item.setX(baseX);
+        }
       });
 
       // transparency tween
