@@ -199,6 +199,9 @@ export default class Demo extends Phaser.Scene {
         if (result) {
           this.awaitingNextQuestion = true;
 
+          // Stop prompt audio immediately on correct to avoid overlap with the next word.
+          this.currentPromptSound?.stop();
+
           // Ensure correct feedback is always visible and doesn't leave the item in a weird state.
           item.alphaTween.stop();
           item.setAngle(baseAngle);
@@ -424,7 +427,10 @@ export default class Demo extends Phaser.Scene {
   }
 
   updateMuteText() {
-    this.muteText.setText(`SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (tap hint / M)`);
+    // Show keyboard shortcuts in the HUD so they're discoverable.
+    this.muteText.setText(
+      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (tap hint / M)  •  Replay: R  •  Next: N`
+    );
   }
 
   replayCurrentPrompt() {
