@@ -135,6 +135,8 @@ export default class Demo extends Phaser.Scene {
         hold: 35,
         paused: true,
         yoyo: true,
+        // Keep the tween around after completion so repeated clicks can restart it.
+        persist: true,
         // Use easeInOut so the return to base scale feels smooth (no “snap back”).
         ease: 'Sine.easeInOut',
         onComplete: () => {
@@ -160,6 +162,8 @@ export default class Demo extends Phaser.Scene {
         paused: true,
         yoyo: true,
         repeat: 3,
+        // Keep the tween around after completion so repeated clicks can restart it.
+        persist: true,
         ease: 'Sine.easeInOut',
         onComplete: () => {
           // Ensure we always snap back to a clean state.
@@ -175,7 +179,9 @@ export default class Demo extends Phaser.Scene {
         targets: item,
         alpha: 0.7,
         duration: 200,
-        paused: true
+        paused: true,
+        // Keep around so hover keeps working reliably over time.
+        persist: true
       });
 
       // create sound for each word
