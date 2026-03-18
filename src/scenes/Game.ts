@@ -129,8 +129,9 @@ export default class Demo extends Phaser.Scene {
       // Correct answer feedback: keep the original main-branch feel (big pop + smooth yoyo).
       item.correctTween = this.tweens.add({
         targets: item,
-        scaleX: baseScaleX * 1.5,
-        scaleY: baseScaleY * 1.5,
+        // Force a consistent start point so the tween never “shrinks first” depending on current scale.
+        scaleX: { from: baseScaleX, to: baseScaleX * 1.5 },
+        scaleY: { from: baseScaleY, to: baseScaleY * 1.5 },
         duration: 300,
         paused: true,
         yoyo: true,
