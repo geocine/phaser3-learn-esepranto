@@ -211,8 +211,10 @@ export default class Demo extends Phaser.Scene {
           item.correctTween.stop();
           item.correctTween.restart();
 
-          // show next question (use Phaser clock so it respects pause/time scale)
-          this.time.delayedCall(800, () => {
+          // Advance only after the correct animation completes (feels paced and avoids audio overlap).
+          // `persist: true` means the tween is reused, so clear any prior complete handlers.
+          item.correctTween.off('complete');
+          item.correctTween.once('complete', () => {
             this.awaitingNextQuestion = false;
             this.showNextQuestion();
           });
