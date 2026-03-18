@@ -126,21 +126,19 @@ export default class Demo extends Phaser.Scene {
       const baseAngle = item.angle;
       const baseAlpha = item.alpha;
 
-      // Correct answer feedback: subtle pop (no large scale that can feel like it “jumps away”).
+      // Correct answer feedback: keep the original main-branch feel (big pop + smooth yoyo).
       item.correctTween = this.tweens.add({
         targets: item,
-        scaleX: baseScaleX * 1.18,
-        scaleY: baseScaleY * 1.18,
-        duration: 150,
-        hold: 35,
+        scaleX: baseScaleX * 1.5,
+        scaleY: baseScaleY * 1.5,
+        duration: 300,
         paused: true,
         yoyo: true,
         // Keep the tween around after completion so repeated clicks can restart it.
         persist: true,
-        // Use easeInOut so the return to base scale feels smooth (no “snap back”).
-        ease: 'Sine.easeInOut',
+        ease: 'Quad.easeInOut',
         onComplete: () => {
-          // Keep as a safety net; yoyo should already return to baseline.
+          // Safety net: ensure we always return to baseline.
           item.setAngle(baseAngle);
           item.setAlpha(baseAlpha);
           item.setScale(baseScaleX, baseScaleY);
