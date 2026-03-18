@@ -148,20 +148,22 @@ export default class Demo extends Phaser.Scene {
 
       item.wrongTween = this.tweens.add({
         targets: item,
-        // Keep scale subtle; the main cue should be a quick shake.
-        scaleX: baseScaleX * 1.12,
-        scaleY: baseScaleY * 1.12,
-        x: baseX + 12,
-        duration: 55,
+        // Shake in place: very small horizontal jitter (no drifting far away).
+        // Keep scale subtle; the main cue should be the shake.
+        scaleX: baseScaleX * 1.06,
+        scaleY: baseScaleY * 1.06,
+        x: { from: baseX - 4, to: baseX + 4 },
+        duration: 45,
         paused: true,
         yoyo: true,
-        repeat: 4,
+        repeat: 3,
         ease: 'Sine.easeInOut',
         onComplete: () => {
           // Ensure we always snap back to a clean state.
-          item.setAngle(0);
+          item.setAngle(baseAngle);
+          item.setAlpha(baseAlpha);
           item.setScale(baseScaleX, baseScaleY);
-          item.setX(baseX);
+          item.setPosition(baseX, baseY);
         }
       });
 
