@@ -137,14 +137,15 @@ export default class Demo extends Phaser.Scene {
 
       item.wrongTween = this.tweens.add({
         targets: item,
-        scaleX: baseScaleX * 1.5,
-        scaleY: baseScaleY * 1.5,
-        x: baseX + 10,
-        duration: 70,
+        // Keep scale subtle; the main cue should be a quick shake.
+        scaleX: baseScaleX * 1.12,
+        scaleY: baseScaleY * 1.12,
+        x: baseX + 12,
+        duration: 55,
         paused: true,
         yoyo: true,
-        repeat: 2,
-        ease: 'Quad.easeInOut',
+        repeat: 4,
+        ease: 'Sine.easeInOut',
         onComplete: () => {
           // Ensure we always snap back to a clean state.
           item.setAngle(0);
@@ -187,6 +188,12 @@ export default class Demo extends Phaser.Scene {
         }
 
         this.inputLocked = true;
+
+        // If the player clicks wrong repeatedly, make sure the feedback always replays.
+        item.wrongTween.stop();
+        item.setAngle(0);
+        item.setScale(baseScaleX, baseScaleY);
+        item.setX(baseX);
         item.wrongTween.restart();
 
         this.time.delayedCall(500, () => {
