@@ -131,11 +131,14 @@ export default class Demo extends Phaser.Scene {
         targets: item,
         scaleX: baseScaleX * 1.18,
         scaleY: baseScaleY * 1.18,
-        duration: 120,
+        duration: 150,
+        hold: 35,
         paused: true,
         yoyo: true,
-        ease: 'Sine.easeOut',
+        // Use easeInOut so the return to base scale feels smooth (no “snap back”).
+        ease: 'Sine.easeInOut',
         onComplete: () => {
+          // Keep as a safety net; yoyo should already return to baseline.
           item.setAngle(baseAngle);
           item.setAlpha(baseAlpha);
           item.setScale(baseScaleX, baseScaleY);
