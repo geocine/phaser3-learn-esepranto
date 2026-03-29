@@ -1,9 +1,21 @@
 import Phaser from 'phaser';
 
-type LearnObject = Phaser.GameObjects.BitmapText & {
-  correctTween?: Phaser.Tweens.Tween;
-  wrongTween?: Phaser.Tweens.Tween;
-  alphaTween?: Phaser.Tweens.Tween;
+type HomeSlot = {
+  x: number;
+  y: number;
+};
+
+type LearnObject = Phaser.GameObjects.Sprite & {
+  correctTween: Phaser.Tweens.Tween;
+  wrongTween: Phaser.Tweens.Tween;
+  alphaTween: Phaser.Tweens.Tween;
+  moveTween?: Phaser.Tweens.Tween;
+  homeX: number;
+  homeY: number;
+  baseScaleX: number;
+  baseScaleY: number;
+  baseAngle: number;
+  baseAlpha: number;
 };
 
 type LearnObjectConfig = Phaser.Types.GameObjects.Group.GroupCreateConfig & {
@@ -36,6 +48,8 @@ export default class Demo extends Phaser.Scene {
   private attempts = 0;
 
   private currentPromptSound?: Phaser.Sound.BaseSound;
+  private itemSprites: LearnObject[] = [];
+  private homeSlots: HomeSlot[] = [];
 
   constructor() {
     super('GameScene');
@@ -110,28 +124,32 @@ export default class Demo extends Phaser.Scene {
     // show group sprites on top of the background
     this.items.setDepth(1);
 
-    let items = this.items.getChildren();
+    this.itemSprites = this.items.getChildren() as LearnObject[];
+    this.homeSlots = this.itemSprites.map((item) => ({
+      x: item.x,
+      y: item.y
+    }));
 
-    for (let i = 0; i < items.length; i++) {
-      const item: LearnObject = items[i] as LearnObject;
+    for (let i = 0; i < this.itemSprites.length; i++) {
+      const item = this.itemSprites[i];
 
       // make item interactive
       item.setInteractive();
 
       // Cache baseline transform so we can always snap back after feedback tweens.
-      const baseX = item.x;
-      const baseY = item.y;
-      const baseScaleX = item.scaleX;
-      const baseScaleY = item.scaleY;
-      const baseAngle = item.angle;
-      const baseAlpha = item.alpha;
+      item.homeX = item.x;
+      item.homeY = item.y;
+      item.baseScaleX = item.scaleX;
+      item.baseScaleY = item.scaleY;
+      item.baseAngle = item.angle;
+      item.baseAlpha = item.alpha;
 
       // Correct answer feedback: keep the original main-branch feel (big pop + smooth yoyo).
       item.correctTween = this.tweens.add({
         targets: item,
         // Force a consistent start point so the tween never “shrinks first” depending on current scale.
-        scaleX: { from: baseScaleX, to: baseScaleX * 1.5 },
-        scaleY: { from: baseScaleY, to: baseScaleY * 1.5 },
+        scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.5 },
+        scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.5 },
         duration: 300,
         paused: true,
         yoyo: true,
@@ -140,10 +158,7 @@ export default class Demo extends Phaser.Scene {
         ease: 'Quad.easeInOut',
         onComplete: () => {
           // Safety net: ensure we always return to baseline.
-          item.setAngle(baseAngle);
-          item.setAlpha(baseAlpha);
-          item.setScale(baseScaleX, baseScaleY);
-          item.setPosition(baseX, baseY);
+          this.resetItemToHome(item);
         }
       });
 
@@ -152,23 +167,18 @@ export default class Demo extends Phaser.Scene {
       item.wrongTween = this.tweens.add({
         targets: item,
         // Force baseline start so it never dips smaller first.
-        scaleX: { from: baseScaleX, to: baseScaleX * 1.18 },
-        scaleY: { from: baseScaleY, to: baseScaleY * 1.18 },
+        scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.18 },
+        scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.18 },
         duration: 220,
         paused: true,
         yoyo: true,
         persist: true,
         ease: 'Quad.easeInOut',
         onStart: () => {
-          // Tint is supported by Images/Sprites; safe-guard for other object types.
-          (item as any).setTint?.(0xff6b6b);
+          item.setTint(0xff6b6b);
         },
         onComplete: () => {
-          (item as any).clearTint?.();
-          item.setAngle(baseAngle);
-          item.setAlpha(baseAlpha);
-          item.setScale(baseScaleX, baseScaleY);
-          item.setPosition(baseX, baseY);
+          this.resetItemToHome(item);
         }
       });
 
@@ -202,10 +212,7 @@ export default class Demo extends Phaser.Scene {
 
           // Ensure correct feedback is always visible and doesn't leave the item in a weird state.
           item.alphaTween.stop();
-          item.setAngle(baseAngle);
-          item.setAlpha(baseAlpha);
-          item.setScale(baseScaleX, baseScaleY);
-          item.setPosition(baseX, baseY);
+          this.resetItemToHome(item);
           item.correctTween.stop();
           item.correctTween.restart();
 
@@ -224,11 +231,8 @@ export default class Demo extends Phaser.Scene {
 
         // If the player clicks wrong repeatedly, make sure the feedback always replays.
         item.alphaTween.stop();
+        this.resetItemToHome(item);
         item.wrongTween.stop();
-        item.setAngle(baseAngle);
-        item.setAlpha(baseAlpha);
-        item.setScale(baseScaleX, baseScaleY);
-        item.setPosition(baseX, baseY);
         item.wrongTween.restart();
 
         this.time.delayedCall(500, () => {
@@ -260,7 +264,7 @@ export default class Demo extends Phaser.Scene {
     // allow tapping/clicking the current word to replay its audio
     this.wordText.setInteractive({ useHandCursor: true });
     this.wordText.on('pointerdown', () => {
-      if (this.awaitingNextQuestion) {
+      if (this.awaitingNextQuestion || this.inputLocked) {
         return;
       }
 
@@ -325,7 +329,7 @@ export default class Demo extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
 
       this.replayButton.on('pointerdown', () => {
-        if (this.awaitingNextQuestion) {
+        if (this.awaitingNextQuestion || this.inputLocked) {
           return;
         }
 
@@ -344,7 +348,7 @@ export default class Demo extends Phaser.Scene {
 
     // keyboard shortcut: press R to replay the current word audio
     this.input.keyboard?.on('keydown-R', () => {
-      if (this.awaitingNextQuestion) {
+      if (this.awaitingNextQuestion || this.inputLocked) {
         return;
       }
 
@@ -354,7 +358,7 @@ export default class Demo extends Phaser.Scene {
 
     // keyboard shortcut: press N to skip to a new prompt (doesn't affect score/attempts)
     this.input.keyboard?.on('keydown-N', () => {
-      if (this.awaitingNextQuestion) {
+      if (this.awaitingNextQuestion || this.inputLocked) {
         return;
       }
 
@@ -438,17 +442,63 @@ export default class Demo extends Phaser.Scene {
     this.currentPromptSound?.play();
   }
 
+  resetItemToHome(item: LearnObject) {
+    item.moveTween?.stop();
+    item.clearTint();
+    item.setAngle(item.baseAngle);
+    item.setAlpha(item.baseAlpha);
+    item.setScale(item.baseScaleX, item.baseScaleY);
+    item.setPosition(item.homeX, item.homeY);
+  }
+
+  shuffleItemHomes(onComplete: () => void) {
+    const shuffledSlots = Phaser.Utils.Array.Shuffle([...this.homeSlots]);
+    let remainingTweens = this.itemSprites.length;
+
+    if (!remainingTweens) {
+      onComplete();
+      return;
+    }
+
+    this.itemSprites.forEach((item, index) => {
+      this.resetItemToHome(item);
+
+      const nextSlot = shuffledSlots[index];
+      item.homeX = nextSlot.x;
+      item.homeY = nextSlot.y;
+      item.moveTween = this.tweens.add({
+        targets: item,
+        x: item.homeX,
+        y: item.homeY,
+        duration: 220,
+        ease: 'Sine.easeInOut',
+        onComplete: () => {
+          item.moveTween = undefined;
+          remainingTweens -= 1;
+
+          if (remainingTweens === 0) {
+            onComplete();
+          }
+        }
+      });
+    });
+  }
+
   showNextQuestion() {
     // select a random word (avoid repeating the same prompt twice in a row)
     const candidateWords = this.words.filter((w) => w.key !== this.lastWordKey);
 
     this.nextWord = Phaser.Math.RND.pick(candidateWords.length ? candidateWords : this.words);
     this.lastWordKey = this.nextWord.key as string;
+    this.wordText.setText(this.nextWord.translation ?? '');
+    this.currentPromptSound?.stop();
+    this.inputLocked = true;
 
-    // play a sound for that word (stop previous prompt so it doesn't overlap)
-    this.currentPromptSound = this.nextWord.sound;
-    this.replayCurrentPrompt();
-
-    this.wordText.setText(this.nextWord.translation);
+    this.shuffleItemHomes(() => {
+      // play a sound for that word after the shuffle so movement and prompt stay in sync
+      this.currentPromptSound = this.nextWord.sound;
+      this.replayCurrentPrompt();
+      this.inputLocked = false;
+    });
   }
 }
