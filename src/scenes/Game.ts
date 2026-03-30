@@ -159,6 +159,12 @@ export default class Demo extends Phaser.Scene {
         onComplete: () => {
           // Safety net: ensure we always return to baseline.
           this.resetItemToHome(item);
+
+          // If this correct click is supposed to advance, do it exactly after the animation finishes.
+          if (this.awaitingNextQuestion) {
+            this.awaitingNextQuestion = false;
+            this.showNextQuestion();
+          }
         }
       });
 
@@ -216,14 +222,7 @@ export default class Demo extends Phaser.Scene {
           item.correctTween.stop();
           item.correctTween.restart();
 
-          // Advance only after the correct animation completes (feels paced and avoids audio overlap).
-          // `persist: true` means the tween is reused, so clear any prior complete handlers.
-          item.correctTween.off('complete');
-          item.correctTween.once('complete', () => {
-            this.awaitingNextQuestion = false;
-            this.showNextQuestion();
-          });
-
+          // Advance happens in the correct tween onComplete callback (so it always stays in sync).
           return;
         }
 
@@ -461,21 +460,35 @@ export default class Demo extends Phaser.Scene {
     }
 
     this.itemSprites.forEach((item, index) => {
-      this.resetItemToHome(item);
+      // Stop any previous movement tween, but DON'T snap back to the old home slot.
+      // Snapping causes a visible “teleport” and feels unnatural.
+      item.moveTween?.stop();
+      item.moveTween = undefined;
+
+      // Reset visuals (scale/tint/alpha), but keep current x/y as the start of the new movement.
+      item.clearTint();
+      item.setAngle(item.baseAngle);
+      item.setAlpha(item.baseAlpha);
+      item.setScale(item.baseScaleX, item.baseScaleY);
 
       const nextSlot = shuffledSlots[index];
       item.homeX = nextSlot.x;
       item.homeY = nextSlot.y;
+
       item.moveTween = this.tweens.add({
         targets: item,
         x: item.homeX,
         y: item.homeY,
-        duration: 220,
+        duration: 260,
+        // Slight stagger reads more natural than everything moving in perfect sync.
+        delay: index * 35,
         ease: 'Sine.easeInOut',
         onComplete: () => {
           item.moveTween = undefined;
-          remainingTweens -= 1;
+          // Snap to exact target to avoid drift.
+          item.setPosition(item.homeX, item.homeY);
 
+          remainingTweens -= 1;
           if (remainingTweens === 0) {
             onComplete();
           }
