@@ -1,9 +1,16 @@
 import Phaser from 'phaser';
 
-type LearnObject = Phaser.GameObjects.BitmapText & {
+type LearnObject = Phaser.GameObjects.Image & {
   correctTween?: Phaser.Tweens.Tween;
   wrongTween?: Phaser.Tweens.Tween;
   alphaTween?: Phaser.Tweens.Tween;
+  promptPulseTween?: Phaser.Tweens.Tween;
+  baseX: number;
+  baseY: number;
+  baseScaleX: number;
+  baseScaleY: number;
+  baseAngle: number;
+  baseAlpha: number;
 };
 
 type LearnObjectConfig = Phaser.Types.GameObjects.Group.GroupCreateConfig & {
@@ -13,6 +20,7 @@ type LearnObjectConfig = Phaser.Types.GameObjects.Group.GroupCreateConfig & {
 
 export default class Demo extends Phaser.Scene {
   items: Phaser.GameObjects.Group;
+  itemByKey: Record<string, LearnObject> = {};
   words: LearnObjectConfig[];
   nextWord: LearnObjectConfig;
   wordText: Phaser.GameObjects.Text;
@@ -36,6 +44,7 @@ export default class Demo extends Phaser.Scene {
   private attempts = 0;
 
   private currentPromptSound?: Phaser.Sound.BaseSound;
+  private currentPromptItem?: LearnObject;
 
   constructor() {
     super('GameScene');
@@ -119,19 +128,21 @@ export default class Demo extends Phaser.Scene {
       item.setInteractive();
 
       // Cache baseline transform so we can always snap back after feedback tweens.
-      const baseX = item.x;
-      const baseY = item.y;
-      const baseScaleX = item.scaleX;
-      const baseScaleY = item.scaleY;
-      const baseAngle = item.angle;
-      const baseAlpha = item.alpha;
+      item.baseX = item.x;
+      item.baseY = item.y;
+      item.baseScaleX = item.scaleX;
+      item.baseScaleY = item.scaleY;
+      item.baseAngle = item.angle;
+      item.baseAlpha = item.alpha;
+
+      this.itemByKey[item.texture.key] = item;
 
       // Correct answer feedback: keep the original main-branch feel (big pop + smooth yoyo).
       item.correctTween = this.tweens.add({
         targets: item,
         // Force a consistent start point so the tween never “shrinks first” depending on current scale.
-        scaleX: { from: baseScaleX, to: baseScaleX * 1.5 },
-        scaleY: { from: baseScaleY, to: baseScaleY * 1.5 },
+        scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.5 },
+        scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.5 },
         duration: 300,
         paused: true,
         yoyo: true,
@@ -140,10 +151,7 @@ export default class Demo extends Phaser.Scene {
         ease: 'Quad.easeInOut',
         onComplete: () => {
           // Safety net: ensure we always return to baseline.
-          item.setAngle(baseAngle);
-          item.setAlpha(baseAlpha);
-          item.setScale(baseScaleX, baseScaleY);
-          item.setPosition(baseX, baseY);
+          this.resetItemTransform(item);
         }
       });
 
@@ -152,8 +160,8 @@ export default class Demo extends Phaser.Scene {
       item.wrongTween = this.tweens.add({
         targets: item,
         // Force baseline start so it never dips smaller first.
-        scaleX: { from: baseScaleX, to: baseScaleX * 1.18 },
-        scaleY: { from: baseScaleY, to: baseScaleY * 1.18 },
+        scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.18 },
+        scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.18 },
         duration: 220,
         paused: true,
         yoyo: true,
@@ -165,10 +173,22 @@ export default class Demo extends Phaser.Scene {
         },
         onComplete: () => {
           (item as any).clearTint?.();
-          item.setAngle(baseAngle);
-          item.setAlpha(baseAlpha);
-          item.setScale(baseScaleX, baseScaleY);
-          item.setPosition(baseX, baseY);
+          this.resetItemTransform(item);
+        }
+      });
+
+      item.promptPulseTween = this.tweens.add({
+        targets: item,
+        scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.06 },
+        scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.06 },
+        duration: 700,
+        paused: true,
+        yoyo: true,
+        repeat: -1,
+        persist: true,
+        ease: 'Sine.easeInOut',
+        onStop: () => {
+          this.resetItemTransform(item);
         }
       });
 
@@ -191,6 +211,8 @@ export default class Demo extends Phaser.Scene {
           return;
         }
 
+        this.stopPromptPulse();
+
         const result = this.processAnswer(this.words[i].translation);
 
         // depending on the result, we'll play one tween or the other
@@ -202,10 +224,7 @@ export default class Demo extends Phaser.Scene {
 
           // Ensure correct feedback is always visible and doesn't leave the item in a weird state.
           item.alphaTween.stop();
-          item.setAngle(baseAngle);
-          item.setAlpha(baseAlpha);
-          item.setScale(baseScaleX, baseScaleY);
-          item.setPosition(baseX, baseY);
+          this.resetItemTransform(item);
           item.correctTween.stop();
           item.correctTween.restart();
 
@@ -225,10 +244,7 @@ export default class Demo extends Phaser.Scene {
         // If the player clicks wrong repeatedly, make sure the feedback always replays.
         item.alphaTween.stop();
         item.wrongTween.stop();
-        item.setAngle(baseAngle);
-        item.setAlpha(baseAlpha);
-        item.setScale(baseScaleX, baseScaleY);
-        item.setPosition(baseX, baseY);
+        this.resetItemTransform(item);
         item.wrongTween.restart();
 
         this.time.delayedCall(500, () => {
@@ -438,7 +454,36 @@ export default class Demo extends Phaser.Scene {
     this.currentPromptSound?.play();
   }
 
+  resetItemTransform(item: LearnObject) {
+    item.setAngle(item.baseAngle);
+    item.setAlpha(item.baseAlpha);
+    item.setScale(item.baseScaleX, item.baseScaleY);
+    item.setPosition(item.baseX, item.baseY);
+  }
+
+  stopPromptPulse(item: LearnObject | undefined = this.currentPromptItem) {
+    if (!item) {
+      return;
+    }
+
+    item.promptPulseTween?.stop();
+    this.resetItemTransform(item);
+
+    if (this.currentPromptItem === item) {
+      this.currentPromptItem = undefined;
+    }
+  }
+
+  startPromptPulse(item: LearnObject) {
+    this.stopPromptPulse();
+    this.resetItemTransform(item);
+    item.promptPulseTween?.restart();
+    this.currentPromptItem = item;
+  }
+
   showNextQuestion() {
+    this.stopPromptPulse();
+
     // select a random word (avoid repeating the same prompt twice in a row)
     const candidateWords = this.words.filter((w) => w.key !== this.lastWordKey);
 
@@ -450,5 +495,6 @@ export default class Demo extends Phaser.Scene {
     this.replayCurrentPrompt();
 
     this.wordText.setText(this.nextWord.translation);
+    this.startPromptPulse(this.itemByKey[this.nextWord.key as string]);
   }
 }
