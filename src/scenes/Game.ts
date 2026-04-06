@@ -50,6 +50,7 @@ export default class Demo extends Phaser.Scene {
   private currentPromptSound?: Phaser.Sound.BaseSound;
   private itemSprites: LearnObject[] = [];
   private homeSlots: HomeSlot[] = [];
+  private homeBaselineY = 0;
 
   constructor() {
     super('GameScene');
@@ -125,9 +126,16 @@ export default class Demo extends Phaser.Scene {
     this.items.setDepth(1);
 
     this.itemSprites = this.items.getChildren() as LearnObject[];
+
+    // Align all objects to a shared baseline (bottom edge), so when they shuffle between slots
+    // they don't appear to float/sink due to differing sprite sizes.
+    this.homeBaselineY = Math.max(
+      ...this.itemSprites.map((item) => item.y + item.displayHeight * (1 - item.originY))
+    );
+
     this.homeSlots = this.itemSprites.map((item) => ({
       x: item.x,
-      y: item.y
+      y: this.homeBaselineY
     }));
 
     for (let i = 0; i < this.itemSprites.length; i++) {
@@ -138,7 +146,9 @@ export default class Demo extends Phaser.Scene {
 
       // Cache baseline transform so we can always snap back after feedback tweens.
       item.homeX = item.x;
-      item.homeY = item.y;
+      item.homeY = this.homeBaselineY - item.displayHeight * (1 - item.originY);
+      // Snap immediately so the initial layout uses the same baseline logic as shuffling.
+      item.setY(item.homeY);
       item.baseScaleX = item.scaleX;
       item.baseScaleY = item.scaleY;
       item.baseAngle = item.angle;
@@ -473,7 +483,8 @@ export default class Demo extends Phaser.Scene {
 
       const nextSlot = shuffledSlots[index];
       item.homeX = nextSlot.x;
-      item.homeY = nextSlot.y;
+      // Keep a consistent baseline across all objects.
+      item.homeY = this.homeBaselineY - item.displayHeight * (1 - item.originY);
 
       item.moveTween = this.tweens.add({
         targets: item,
@@ -485,8 +496,8 @@ export default class Demo extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         onComplete: () => {
           item.moveTween = undefined;
-          // Snap to exact target to avoid drift.
-          item.setPosition(item.homeX, item.homeY);
+          // Snap to exact target to avoid drift + avoid subpixel blur.
+          item.setPosition(Math.round(item.homeX), Math.round(item.homeY));
 
           remainingTweens -= 1;
           if (remainingTweens === 0) {
