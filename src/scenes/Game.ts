@@ -213,41 +213,7 @@ export default class Demo extends Phaser.Scene {
 
       // listen to the pointerdown event
       item.on('pointerdown', () => {
-        if (this.awaitingNextQuestion || this.inputLocked) {
-          return;
-        }
-
-        const result = this.processAnswer(this.words[i].translation);
-
-        // depending on the result, we'll play one tween or the other
-        if (result) {
-          this.awaitingNextQuestion = true;
-
-          // Stop prompt audio immediately on correct to avoid overlap with the next word.
-          this.currentPromptSound?.stop();
-
-          // Ensure correct feedback is always visible and doesn't leave the item in a weird state.
-          item.alphaTween.stop();
-          this.resetItemToHome(item);
-          item.correctTween.stop();
-          item.correctTween.restart();
-
-          // Advance happens in the correct tween onComplete callback (so it always stays in sync).
-          return;
-        }
-
-        this.inputLocked = true;
-
-        // If the player clicks wrong repeatedly, make sure the feedback always replays.
-        item.alphaTween.stop();
-        this.resetItemToHome(item);
-        item.wrongTween.stop();
-        item.wrongTween.restart();
-
-        this.time.delayedCall(500, () => {
-          this.inputLocked = false;
-          this.replayCurrentPrompt();
-        });
+        this.selectItem(item);
       });
 
       // listen to the pointerover event
@@ -376,6 +342,24 @@ export default class Demo extends Phaser.Scene {
       this.awaitingNextQuestion = false;
     });
 
+    // keyboard shortcut: press 1-4 to pick the current left-to-right item order
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      const shortcutIndex = Number.parseInt(event.key, 10);
+
+      if (!Number.isInteger(shortcutIndex) || shortcutIndex < 1 || shortcutIndex > 4) {
+        return;
+      }
+
+      const orderedItems = [...this.itemSprites].sort((left, right) => left.x - right.x);
+      const selectedItem = orderedItems[shortcutIndex - 1];
+
+      if (!selectedItem) {
+        return;
+      }
+
+      this.selectItem(selectedItem);
+    });
+
     // correct / wrong sounds
     this.correctSound = this.sound.add('correct');
     this.wrongSound = this.sound.add('wrong');
@@ -442,8 +426,52 @@ export default class Demo extends Phaser.Scene {
   updateMuteText() {
     // Show keyboard shortcuts in the HUD so they're discoverable.
     this.muteText.setText(
-      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (tap hint / M)  •  Replay: R  •  Next: N`
+      `SFX: ${this.sfxMuted ? 'OFF' : 'ON'} (tap/M)  •  Pick: 1-4  •  Replay: R  •  Next: N`
     );
+  }
+
+  selectItem(item: LearnObject) {
+    if (this.awaitingNextQuestion || this.inputLocked) {
+      return;
+    }
+
+    const itemIndex = this.itemSprites.indexOf(item);
+
+    if (itemIndex === -1) {
+      return;
+    }
+
+    const result = this.processAnswer(this.words[itemIndex].translation);
+
+    // depending on the result, we'll play one tween or the other
+    if (result) {
+      this.awaitingNextQuestion = true;
+
+      // Stop prompt audio immediately on correct to avoid overlap with the next word.
+      this.currentPromptSound?.stop();
+
+      // Ensure correct feedback is always visible and doesn't leave the item in a weird state.
+      item.alphaTween.stop();
+      this.resetItemToHome(item);
+      item.correctTween.stop();
+      item.correctTween.restart();
+
+      // Advance happens in the correct tween onComplete callback (so it always stays in sync).
+      return;
+    }
+
+    this.inputLocked = true;
+
+    // If the player clicks wrong repeatedly, make sure the feedback always replays.
+    item.alphaTween.stop();
+    this.resetItemToHome(item);
+    item.wrongTween.stop();
+    item.wrongTween.restart();
+
+    this.time.delayedCall(500, () => {
+      this.inputLocked = false;
+      this.replayCurrentPrompt();
+    });
   }
 
   replayCurrentPrompt() {
