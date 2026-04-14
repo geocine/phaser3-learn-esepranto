@@ -46,6 +46,8 @@ export default class Demo extends Phaser.Scene {
   private sfxMuted = false;
   private score = 0;
   private attempts = 0;
+  private correctStreak = 0;
+  private shufflePace = 0;
 
   private currentPromptSound?: Phaser.Sound.BaseSound;
   private itemSprites: LearnObject[] = [];
@@ -398,6 +400,7 @@ export default class Demo extends Phaser.Scene {
 
       // play sound
       this.correctSound.play();
+      this.updateShufflePace(true);
 
       this.updateScoreText();
       this.showFeedback(true);
@@ -408,6 +411,7 @@ export default class Demo extends Phaser.Scene {
 
       // play sound
       this.wrongSound.play();
+      this.updateShufflePace(false);
 
       this.updateScoreText();
       this.showFeedback(false);
@@ -460,9 +464,23 @@ export default class Demo extends Phaser.Scene {
     item.setPosition(item.homeX, item.homeY);
   }
 
+  updateShufflePace(correct: boolean) {
+    if (correct) {
+      this.correctStreak = Math.min(this.correctStreak + 1, 5);
+      const paceBoost = this.correctStreak >= 2 ? 0.18 : 0.08;
+      this.shufflePace = Math.min(this.shufflePace + paceBoost, 1);
+      return;
+    }
+
+    this.correctStreak = 0;
+    this.shufflePace = Math.max(this.shufflePace - 0.35, 0);
+  }
+
   shuffleItemHomes(onComplete: () => void) {
     const shuffledSlots = Phaser.Utils.Array.Shuffle([...this.homeSlots]);
     let remainingTweens = this.itemSprites.length;
+    const duration = Math.round(Phaser.Math.Linear(260, 185, this.shufflePace));
+    const stagger = Math.round(Phaser.Math.Linear(35, 18, this.shufflePace));
 
     if (!remainingTweens) {
       onComplete();
@@ -490,9 +508,9 @@ export default class Demo extends Phaser.Scene {
         targets: item,
         x: item.homeX,
         y: item.homeY,
-        duration: 260,
-        // Slight stagger reads more natural than everything moving in perfect sync.
-        delay: index * 35,
+        duration,
+        // Readability comes first: the shuffle only gets a little brisker as the player settles in.
+        delay: index * stagger,
         ease: 'Sine.easeInOut',
         onComplete: () => {
           item.moveTween = undefined;
