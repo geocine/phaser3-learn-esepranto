@@ -23,6 +23,11 @@ type LearnObjectConfig = Phaser.Types.GameObjects.Group.GroupCreateConfig & {
   sound?: Phaser.Sound.BaseSound;
 };
 
+type PromptProgress = {
+  misses: number;
+  wrongStreak: number;
+};
+
 export default class Demo extends Phaser.Scene {
   items: Phaser.GameObjects.Group;
   words: LearnObjectConfig[];
@@ -41,6 +46,7 @@ export default class Demo extends Phaser.Scene {
   wrongSound: Phaser.Sound.BaseSound;
 
   private lastWordKey?: string;
+  private promptProgress: Record<string, PromptProgress> = {};
   private awaitingNextQuestion = false;
   private inputLocked = false;
   private sfxMuted = false;
@@ -116,6 +122,15 @@ export default class Demo extends Phaser.Scene {
         translation: 'arbo'
       }
     ];
+
+    this.promptProgress = this.words.reduce<Record<string, PromptProgress>>((progress, word) => {
+      progress[word.key as string] = {
+        misses: 0,
+        wrongStreak: 0
+      };
+
+      return progress;
+    }, {});
   }
 
   create() {
@@ -381,6 +396,7 @@ export default class Demo extends Phaser.Scene {
       // it's correct
 
       this.score += 1;
+      this.recordPromptResult(true);
 
       // play sound
       this.correctSound.play();
@@ -392,6 +408,7 @@ export default class Demo extends Phaser.Scene {
       return true;
     } else {
       // it's wrong
+      this.recordPromptResult(false);
 
       // play sound
       this.wrongSound.play();
@@ -504,6 +521,49 @@ export default class Demo extends Phaser.Scene {
     this.shufflePace = Math.max(this.shufflePace - 0.35, 0);
   }
 
+  recordPromptResult(correct: boolean) {
+    const promptKey = this.nextWord?.key as string | undefined;
+
+    if (!promptKey) {
+      return;
+    }
+
+    const progress = this.promptProgress[promptKey];
+
+    if (!progress) {
+      return;
+    }
+
+    if (correct) {
+      progress.wrongStreak = 0;
+      progress.misses = Math.max(progress.misses - 1, 0);
+      return;
+    }
+
+    progress.misses += 1;
+    progress.wrongStreak += 1;
+  }
+
+  pickWeightedPrompt(candidateWords: LearnObjectConfig[]) {
+    const weightedWords = candidateWords.map((word) => {
+      const progress = this.promptProgress[word.key as string];
+      const weight = 1 + (progress?.misses ?? 0) + (progress?.wrongStreak ?? 0) * 2;
+
+      return { word, weight };
+    });
+    const totalWeight = weightedWords.reduce((sum, entry) => sum + entry.weight, 0);
+    let target = Phaser.Math.RND.frac() * totalWeight;
+
+    for (const entry of weightedWords) {
+      target -= entry.weight;
+      if (target <= 0) {
+        return entry.word;
+      }
+    }
+
+    return weightedWords[weightedWords.length - 1].word;
+  }
+
   shuffleItemHomes(onComplete: () => void) {
     const shuffledSlots = Phaser.Utils.Array.Shuffle([...this.homeSlots]);
     let remainingTweens = this.itemSprites.length;
@@ -555,10 +615,11 @@ export default class Demo extends Phaser.Scene {
   }
 
   showNextQuestion() {
-    // select a random word (avoid repeating the same prompt twice in a row)
+    // Bias toward recent misses, but still avoid immediate repeats when there's another option.
     const candidateWords = this.words.filter((w) => w.key !== this.lastWordKey);
+    const availableWords = candidateWords.length ? candidateWords : this.words;
 
-    this.nextWord = Phaser.Math.RND.pick(candidateWords.length ? candidateWords : this.words);
+    this.nextWord = this.pickWeightedPrompt(availableWords);
     this.lastWordKey = this.nextWord.key as string;
     this.wordText.setText(this.nextWord.translation ?? '');
     this.currentPromptSound?.stop();
