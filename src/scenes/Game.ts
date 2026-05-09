@@ -196,19 +196,29 @@ export default class Demo extends Phaser.Scene {
       });
 
       // Wrong answer feedback: match the "correct" pop style, just smaller + with a brief red tint.
-      // This keeps the motion consistent and kid-friendly.
+      // Add a quick sideways knockback so failure feels crisp without moving the item off its slot.
       item.wrongTween = this.tweens.add({
         targets: item,
         // Force baseline start so it never dips smaller first.
         scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.18 },
         scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.18 },
-        duration: 220,
+        x: {
+          from: item.homeX,
+          to: item.homeX + 12
+        },
+        angle: {
+          from: item.baseAngle,
+          to: item.baseAngle + 4
+        },
+        duration: 65,
         paused: true,
         yoyo: true,
+        repeat: 2,
         persist: true,
         ease: 'Quad.easeInOut',
         onStart: () => {
           item.setTint(0xff6b6b);
+          this.cameras.main.shake(90, 0.0025, true);
         },
         onComplete: () => {
           this.resetItemToHome(item);
