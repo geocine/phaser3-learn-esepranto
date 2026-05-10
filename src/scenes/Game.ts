@@ -495,9 +495,36 @@ export default class Demo extends Phaser.Scene {
 
     // If the player clicks wrong repeatedly, make sure the feedback always replays.
     item.alphaTween.stop();
-    this.resetItemToHome(item);
-    item.wrongTween.stop();
-    item.wrongTween.restart();
+    // Don't snap to home before playing feedback; play it from the CURRENT on-screen position.
+    this.resetItemVisuals(item);
+
+    // Recreate the wrong tween each time so its start/end are based on the current x/angle.
+    // (A persistent tween would keep the old slot coordinates after shuffles.)
+    item.wrongTween?.stop();
+    item.wrongTween?.remove();
+
+    const startX = item.x;
+    const startAngle = item.angle;
+    item.wrongTween = this.tweens.add({
+      targets: item,
+      scaleX: { from: item.baseScaleX, to: item.baseScaleX * 1.18 },
+      scaleY: { from: item.baseScaleY, to: item.baseScaleY * 1.18 },
+      x: { from: startX, to: startX + 12 },
+      angle: { from: startAngle, to: startAngle + 4 },
+      duration: 65,
+      paused: false,
+      yoyo: true,
+      repeat: 2,
+      ease: 'Quad.easeInOut',
+      onStart: () => {
+        item.setTint(0xff6b6b);
+        this.cameras.main.shake(90, 0.0025, true);
+      },
+      onComplete: () => {
+        // Return to the item's CURRENT home slot after feedback.
+        this.resetItemToHome(item);
+      }
+    });
 
     this.time.delayedCall(500, () => {
       this.inputLocked = false;
@@ -512,11 +539,16 @@ export default class Demo extends Phaser.Scene {
 
   resetItemToHome(item: LearnObject) {
     item.moveTween?.stop();
+    this.resetItemVisuals(item);
+    item.setPosition(item.homeX, item.homeY);
+  }
+
+  resetItemVisuals(item: LearnObject) {
+    // Clear feedback state without teleporting the sprite.
     item.clearTint();
     item.setAngle(item.baseAngle);
     item.setAlpha(item.baseAlpha);
     item.setScale(item.baseScaleX, item.baseScaleY);
-    item.setPosition(item.homeX, item.homeY);
   }
 
   updateShufflePace(correct: boolean) {
