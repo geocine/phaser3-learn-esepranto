@@ -54,6 +54,7 @@ export default class Demo extends Phaser.Scene {
   private attempts = 0;
   private correctStreak = 0;
   private shufflePace = 0;
+  private nextShuffleSlowdown = 0;
 
   private currentPromptSound?: Phaser.Sound.BaseSound;
   private itemSprites: LearnObject[] = [];
@@ -419,6 +420,7 @@ export default class Demo extends Phaser.Scene {
     } else {
       // it's wrong
       this.recordPromptResult(false);
+      this.maybeTriggerAdaptiveAssist();
 
       // play sound
       this.wrongSound.play();
@@ -586,6 +588,63 @@ export default class Demo extends Phaser.Scene {
     progress.wrongStreak += 1;
   }
 
+  maybeTriggerAdaptiveAssist() {
+    const promptKey = this.nextWord?.key as string | undefined;
+
+    if (!promptKey) {
+      return;
+    }
+
+    const progress = this.promptProgress[promptKey];
+
+    if (!progress || progress.wrongStreak !== 3) {
+      return;
+    }
+
+    this.nextShuffleSlowdown = Math.max(this.nextShuffleSlowdown, 0.18);
+
+    const correctIndex = this.words.findIndex((word) => word.key === promptKey);
+    const correctItem = this.itemSprites[correctIndex];
+
+    if (!correctItem) {
+      return;
+    }
+
+    const bounds = correctItem.getBounds();
+    const outline = this.add
+      .rectangle(bounds.centerX, bounds.centerY, bounds.width + 18, bounds.height + 18)
+      .setDepth(correctItem.depth - 0.1)
+      .setStrokeStyle(4, 0xfff08a, 0.95)
+      .setFillStyle(0xffffff, 0);
+
+    this.tweens.add({
+      targets: correctItem,
+      scaleX: { from: correctItem.baseScaleX, to: correctItem.baseScaleX * 1.1 },
+      scaleY: { from: correctItem.baseScaleY, to: correctItem.baseScaleY * 1.1 },
+      duration: 160,
+      yoyo: true,
+      ease: 'Sine.easeOut',
+      onStart: () => {
+        correctItem.setTint(0xfff08a);
+      },
+      onComplete: () => {
+        this.resetItemVisuals(correctItem);
+      }
+    });
+
+    this.tweens.add({
+      targets: outline,
+      alpha: { from: 0.95, to: 0 },
+      scaleX: { from: 0.94, to: 1.06 },
+      scaleY: { from: 0.94, to: 1.06 },
+      duration: 260,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        outline.destroy();
+      }
+    });
+  }
+
   pickWeightedPrompt(candidateWords: LearnObjectConfig[]) {
     const weightedWords = candidateWords.map((word) => {
       const progress = this.promptProgress[word.key as string];
@@ -609,8 +668,11 @@ export default class Demo extends Phaser.Scene {
   shuffleItemHomes(onComplete: () => void) {
     const shuffledSlots = Phaser.Utils.Array.Shuffle([...this.homeSlots]);
     let remainingTweens = this.itemSprites.length;
-    const duration = Math.round(Phaser.Math.Linear(260, 185, this.shufflePace));
-    const stagger = Math.round(Phaser.Math.Linear(35, 18, this.shufflePace));
+    const slowdownMultiplier = 1 + this.nextShuffleSlowdown;
+    const duration = Math.round(Phaser.Math.Linear(260, 185, this.shufflePace) * slowdownMultiplier);
+    const stagger = Math.round(Phaser.Math.Linear(35, 18, this.shufflePace) * slowdownMultiplier);
+
+    this.nextShuffleSlowdown = 0;
 
     if (!remainingTweens) {
       onComplete();
